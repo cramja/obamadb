@@ -82,6 +82,60 @@ namespace obamadb {
     DISABLE_COPY_AND_ASSIGN(SVMTask);
   };
 
+  class AlignedSVMTask : MLTask {
+  public:
+    AlignedSVMTask(DataView *dataView,
+            aligned_fvector *sharedTheta,
+            SVMParams *sharedParams)
+      : MLTask(dataView),
+        shared_theta_(sharedTheta),
+        shared_params_(sharedParams) {}
+
+    MLAlgorithm getType() override {
+      return MLAlgorithm::kSVM;
+    }
+
+    /**
+     * Calculates and applies the gradient of the SVM.
+     */
+    void execute(int thread_id, void *ml_state) override;
+
+    /**
+     * The number of misclassified examples in a training block.
+     * @param theta The model.
+     * @param block The block.
+     * @return Number misclassified.
+     */
+    static int numMisclassified(const aligned_fvector &theta, const SparseDataBlock<num_t> &block);
+
+    /**
+     * Gets the fraction of misclassified examples.
+     * @param theta The trained weights.
+     * @param block A sample of the data.
+     * @return Fraction of misclassified examples.
+     */
+    static double fractionMisclassified(const aligned_fvector &theta, std::vector<SparseDataBlock<num_t> *> const &block);
+
+    /**
+     * Root mean squared error.
+     * @param theta The trained weights.
+     * @param blocks All the data.
+     */
+    static double rmsError(const aligned_fvector &theta, std::vector<SparseDataBlock<num_t> *> const &block);
+
+    /**
+    * @param theta
+    * @param blocks
+    * @return
+    */
+    static double rmsErrorLoss(const aligned_fvector &theta, std::vector<SparseDataBlock<num_t> *> const &blocks);
+
+    aligned_fvector *shared_theta_;
+    SVMParams *shared_params_;
+
+    DISABLE_COPY_AND_ASSIGN(AlignedSVMTask);
+  };
+
 /**
  * Constructs the SVM to the parameters used in the HW! paper.
  * @return Caller-owned SVM params.

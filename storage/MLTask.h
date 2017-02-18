@@ -19,6 +19,16 @@ namespace obamadb {
     num_t dot(const dvector <num_t> &v1, num_t const *d2);
 
     /**
+     * Aligned Dot product
+     */
+    num_t dot(const svector <num_t> &v1, aligned_fvector::aligned_num_t const *d2);
+
+    /**
+     * Aligned scale and add.
+     */
+    void scale_and_add(aligned_fvector::aligned_num_t *theta, const svector<num_t> &delta, const num_t e);
+
+    /**
      * Sparse dot product
      */
     num_t dot(const svector <num_t> &v1, num_t *d2);

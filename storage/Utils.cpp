@@ -18,6 +18,17 @@ namespace obamadb {
     return shared_theta;
   }
 
+  aligned_fvector aligned_fvector::GetRandomFVector(int const dim) {
+    aligned_fvector shared_theta(dim);
+    // initialize to values [-1,1]
+    float const half_max = ((float)INT_MAX)/2.0;
+    for (unsigned i = 0; i < dim; ++i) {
+      float const randf = (float)rand();
+      shared_theta[i] = static_cast<num_t>(randf/half_max - 1.0);
+    }
+    return shared_theta;
+  }
+
   std::vector<int> GetIntList(std::string const & list) {
     std::vector<int> vec;
     char const * raw = list.c_str();

@@ -68,7 +68,51 @@ namespace obamadb {
 
     unsigned dimension_;
     num_t *values_;
+  };
 
+  /**
+   * Aligned fvector.
+   */
+  struct aligned_fvector {
+    // 4 - normal, 64 - whole line
+    struct alignas(8) aligned_num_t {
+      num_t val;
+    };
+
+    aligned_fvector(unsigned dimension)
+      : dimension_(dimension) {
+      values_ = new aligned_num_t[dimension_];
+    }
+
+    aligned_fvector(const fvector &other) {
+      dimension_ = other.dimension_;
+      values_ = new aligned_num_t[dimension_];
+      memcpy(values_, other.values_, sizeof(num_t) * dimension_);
+    }
+
+    /**
+     * An fvector filled with values [-1,1]
+     * @param dim Number of elements in the new fvector.
+     * @return An fvector filled with random floats.
+     */
+    static aligned_fvector GetRandomFVector(int const dim);
+
+    ~aligned_fvector() {
+      delete[] values_;
+    }
+
+    num_t &operator[](int idx) const {
+      DCHECK_GT(dimension_, idx);
+
+      return values_[idx].val;
+    }
+
+    void clear() {
+      memset(values_, 0, sizeof(num_t) * dimension_);
+    }
+
+    unsigned dimension_;
+    aligned_num_t *values_;
   };
 
   class QuickRandom {

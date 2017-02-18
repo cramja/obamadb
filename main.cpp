@@ -149,9 +149,10 @@ namespace obamadb {
     }
   }
 
+  template<class T, class V>
   void printSVMEpochStats(Matrix const * matTrain,
                         Matrix const * matTest,
-                        fvector const & theta,
+                        V const & theta,
                         int iteration,
                         float timeTrain) {
 
@@ -159,10 +160,10 @@ namespace obamadb {
       return;
     }
 
-    double const trainRmsLoss = SVMTask::rmsErrorLoss(theta, matTrain->blocks_);
-    double const testRmsLoss = SVMTask::rmsErrorLoss(theta, matTest->blocks_);
-    double const trainFractionMisclassified = SVMTask::fractionMisclassified(theta,matTrain->blocks_);
-    double const testFractionMisclassified = SVMTask::fractionMisclassified(theta,matTest->blocks_);
+    double const trainRmsLoss = T::rmsErrorLoss(theta, matTrain->blocks_);
+    double const testRmsLoss = T::rmsErrorLoss(theta, matTest->blocks_);
+    double const trainFractionMisclassified = T::fractionMisclassified(theta,matTrain->blocks_);
+    double const testFractionMisclassified = T::fractionMisclassified(theta,matTest->blocks_);
 
     printf("%-3d, %.3f, %.4f, %.2f, %.4f, %.2f\n",
            iteration,
@@ -180,20 +181,20 @@ namespace obamadb {
                                Matrix *mat_test) {
     SVMParams* svm_params = DefaultSVMParams<num_t>(mat_train->blocks_);
     DCHECK_EQ(svm_params->degrees.size(), maxColumns(mat_train->blocks_));
-    fvector sharedTheta = fvector::GetRandomFVector(mat_train->numColumns_);
+    aligned_fvector sharedTheta = aligned_fvector::GetRandomFVector(mat_train->numColumns_);
 
     // Arguments to the thread pool.
     std::vector<void*> threadStates;
     std::vector<std::function<void(int, void*)>> threadFns;
 
     // Create an observer thread, if specified
-    std::unique_ptr<ConvergenceObserver> observer;
-    if (FLAGS_measure_convergence) {
-      observer.reset(new ConvergenceObserver(&sharedTheta));
-      auto observer_fn = observerThreadFn;
-      threadFns.push_back(observer_fn);
-      threadStates.push_back(observer.get());
-    }
+//    std::unique_ptr<ConvergenceObserver> observer;
+//    if (FLAGS_measure_convergence) {
+//      observer.reset(new ConvergenceObserver(&sharedTheta));
+//      auto observer_fn = observerThreadFn;
+//      threadFns.push_back(observer_fn);
+//      threadStates.push_back(observer.get());
+//    }
 
     // Create the tasks for the thread pool.
     // Roughly allocates work.
@@ -202,12 +203,12 @@ namespace obamadb {
     allocateBlocks(FLAGS_threads, mat_train->blocks_, data_views);
     // Create tasks
     auto update_fn = [](int tid, void* state) {
-      SVMTask* task = reinterpret_cast<SVMTask*>(state);
+      AlignedSVMTask* task = reinterpret_cast<AlignedSVMTask*>(state);
       task->execute(tid, nullptr);
     };
-    std::vector<std::unique_ptr<SVMTask>> tasks(FLAGS_threads);
+    std::vector<std::unique_ptr<AlignedSVMTask>> tasks(FLAGS_threads);
     for (int i = 0; i < tasks.size(); i++) {
-      tasks[i].reset(new SVMTask(data_views[i].release(), &sharedTheta, svm_params));
+      tasks[i].reset(new AlignedSVMTask(data_views[i].release(), &sharedTheta, svm_params));
       threadStates.push_back(tasks[i].get());
       threadFns.push_back(update_fn);
     }
@@ -215,14 +216,14 @@ namespace obamadb {
     ThreadPool tp(threadFns, threadStates);
 
     // If we are observing convergence, the thread pool must be referenced.
-    if (observer) {
-      observer->threadPool_ = &tp;
-    }
+//    if (observer) {
+//      observer->threadPool_ = &tp;
+//    }
 
     tp.begin();
 
     VPRINT("epoch, train_time, train_fraction_misclassified, train_RMS_loss, test_fraction_misclassified, test_RMS_loss\n");
-    printSVMEpochStats(mat_train, mat_test, sharedTheta, -1, -1);
+    printSVMEpochStats<AlignedSVMTask, aligned_fvector>(mat_train, mat_test, sharedTheta, -1, -1);
     double totalTrainTime = 0.0;
     std::vector<double> epoch_times;
     for (int cycle = 0; cycle < FLAGS_num_epochs; cycle++) {
@@ -233,7 +234,7 @@ namespace obamadb {
       double elapsedTimeSec = (time_ms.count())/ 1e3;
       totalTrainTime += elapsedTimeSec;
 
-      printSVMEpochStats(mat_train, mat_test, sharedTheta, cycle, elapsedTimeSec);
+      printSVMEpochStats<AlignedSVMTask, aligned_fvector>(mat_train, mat_test, sharedTheta, cycle, elapsedTimeSec);
       epoch_times.push_back(elapsedTimeSec);
     }
     tp.stop();
@@ -242,21 +243,21 @@ namespace obamadb {
     printf(">>>\n%d,%f,%f\n",
            (int)FLAGS_threads,
            totalTrainTime / FLAGS_num_epochs,
-           SVMTask::fractionMisclassified(sharedTheta, mat_test->blocks_));
+           AlignedSVMTask::fractionMisclassified(sharedTheta, mat_test->blocks_));
 
-    if (FLAGS_measure_convergence) {
-      printf("Convergence Info (%d measures)\n", (int)observer->observedModels_.size());
-
-      for (int obs_idx = 0; obs_idx < observer->observedModels_.size(); obs_idx++) {
-        std::uint64_t timeObs = observer->observedTimes_[obs_idx];
-        fvector const & thetaObs = observer->observedModels_[obs_idx];
-        printf("%d,%llu,%.4f,%.4f\n",
-               (int)FLAGS_threads,
-               timeObs,
-               SVMTask::rmsErrorLoss(thetaObs, mat_test->blocks_),
-               SVMTask::fractionMisclassified(thetaObs, mat_test->blocks_));
-      }
-    }
+//    if (FLAGS_measure_convergence) {
+//      printf("Convergence Info (%d measures)\n", (int)observer->observedModels_.size());
+//
+//      for (int obs_idx = 0; obs_idx < observer->observedModels_.size(); obs_idx++) {
+//        std::uint64_t timeObs = observer->observedTimes_[obs_idx];
+//        fvector const & thetaObs = observer->observedModels_[obs_idx];
+//        printf("%d,%llu,%.4f,%.4f\n",
+//               (int)FLAGS_threads,
+//               timeObs,
+//               SVMTask::rmsErrorLoss(thetaObs, mat_test->blocks_),
+//               SVMTask::fractionMisclassified(thetaObs, mat_test->blocks_));
+//      }
+//    }
     return epoch_times;
   }
 
