@@ -8,8 +8,8 @@
 #include "storage/SVMTask.h"
 
 // comment this out depending on the test you are doing:
-// #define USE_HINGE 0
-// #define USE_SCALING 0
+#define USE_HINGE 0
+#define USE_SCALING 0
 
 namespace obamadb {
 
@@ -33,7 +33,7 @@ namespace obamadb {
       if (wxy < 1) {
         num_t const e = step_size * y;
         // scale weights
-        ml::scaleAndAdd(theta, row, e);
+        ml::scale_and_add(theta, row, e);
       }
 #else
       // always apply the hinge loss, for memory-access

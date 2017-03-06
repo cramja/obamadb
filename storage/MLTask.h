@@ -47,7 +47,7 @@ namespace obamadb {
     /*
      * Takes ownership of the DataView.
      */
-    MLTask(DataView *dataView)
+    MLTask(CacheDataView *dataView)
       : data_view_(dataView) {}
 
     ~MLTask() {
@@ -67,7 +67,7 @@ namespace obamadb {
     virtual void execute(int thread_id, void* ml_state) = 0;
 
   protected:
-    DataView *data_view_;
+    CacheDataView *data_view_;
 
     DISABLE_COPY_AND_ASSIGN(MLTask);
   };

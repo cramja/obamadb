@@ -9,7 +9,8 @@ namespace obamadb {
   // integer type, we call it num(ber) type.
   typedef float num_t;
 
-  const std::uint64_t kStorageBlockSize = 2e6;  // 2 megabytes.
+  const std::uint64_t kStorageBlockSize = (std::uint64_t)(256000 * 0.7);  // 2 megabytes.
+  // mac l2 - 256kb
 
 }  // namespace obamadb
 

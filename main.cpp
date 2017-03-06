@@ -131,7 +131,7 @@ namespace obamadb {
   template<class T>
   void allocateBlocks(const int num_threads,
                       const std::vector<SparseDataBlock<T> *> &data_blocks,
-                      std::vector<std::unique_ptr<DataView>>& views) {
+                      std::vector<std::unique_ptr<CacheDataView>>& views) {
     CHECK(views.size() == 0) << "Only accepts empty view vectors";
     CHECK_GE(data_blocks.size(), views.size())
       << "Partitioned data would not distribute to all threads."
@@ -139,7 +139,7 @@ namespace obamadb {
 
     for (int i = 0; i < data_blocks.size(); i++) {
       if (i < num_threads) {
-        views.push_back(std::unique_ptr<DataView>(new DataView()));
+        views.push_back(std::unique_ptr<CacheDataView>(new CacheDataView()));
       }
       SparseDataBlock<T> const *dbptr = data_blocks[i];
       views[i % num_threads]->appendBlock(dbptr);
@@ -194,7 +194,7 @@ namespace obamadb {
 
     // Create the tasks for the thread pool.
     // Roughly allocates work.
-    std::vector<std::unique_ptr<DataView>> data_views;
+    std::vector<std::unique_ptr<CacheDataView>> data_views;
 
     allocateBlocks(FLAGS_threads, mat_train->blocks_, data_views);
     // Create tasks
@@ -283,7 +283,7 @@ namespace obamadb {
       std::vector<double> times = trainSVM(mat_train.get(), mat_test.get());
       all_epoch_times.insert(all_epoch_times.end(), times.begin(), times.end());
 
-      if (FLAGS_num_trials != i -1) {
+      if (FLAGS_num_trials - 1 != i) {
         usleep(1e7);
       }
     }

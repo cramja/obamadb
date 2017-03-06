@@ -30,7 +30,7 @@ namespace obamadb {
 
   class SVMTask : MLTask {
   public:
-    SVMTask(DataView *dataView,
+    SVMTask(CacheDataView *dataView,
             fvector *sharedTheta,
             SVMParams *sharedParams)
       : MLTask(dataView),
@@ -88,7 +88,7 @@ namespace obamadb {
  */
   template<class T>
   SVMParams *DefaultSVMParams(std::vector<SparseDataBlock<T> *> &all_blocks) {
-    SVMParams *params = new SVMParams(1, 0.1, 0.99);
+    SVMParams *params = new SVMParams(1, 0.01, 0.95);
 
     int dim = 0;
     // count the number of members of each column
