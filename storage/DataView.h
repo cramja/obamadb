@@ -12,9 +12,11 @@
 
 namespace obamadb {
 
-  static int minibatch_decay = 3;
+  static int minibatch_decay = 4;
   static int minibatch_round = 0;
-  static int minibatch_rounds = 4;
+  static int minibatch_rounds = 3;
+
+  static bool shuffle_blocks = false;
 
   class DataView {
   public:
@@ -59,21 +61,23 @@ namespace obamadb {
   class CacheDataView : public DataView {
   public:
     CacheDataView(std::vector<SparseDataBlock<num_t> const *> blocks)
-      : DataView(blocks), idx_order(), repeat(minibatch_rounds), round(0) {
+      : DataView(blocks), idx_order(), idx_block_order(), repeat(minibatch_rounds), round(0) {
       init_idx_shuffle();
     }
 
-    CacheDataView() : DataView(), idx_order(), repeat(minibatch_rounds), round(0) { }
+    CacheDataView() : DataView(), idx_order(), idx_block_order(), repeat(minibatch_rounds), round(0) { }
 
     bool getNext(svector<num_t> * row) override {
-      std::vector<int> const & idx_perm = idx_order[current_block_];
+      int block_idx = idx_block_order[current_block_];
+      std::vector<int> const & idx_perm = idx_order[block_idx];
+
 
       if (current_idx_ < idx_perm.size()) {
-        blocks_[current_block_]->getRowVectorFast(idx_perm[current_idx_++], row);
+        blocks_[block_idx]->getRowVectorFast(idx_perm[current_idx_++], row);
         return true;
       } else if (round < minibatch_rounds) {
         round++;
-        reshuffle(current_block_);
+        reshuffle(block_idx);
         current_idx_ = 0;
         return getNext(row);
       } else if (current_block_ < blocks_.size() - 1) {
@@ -96,6 +100,8 @@ namespace obamadb {
           minibatch_rounds -= 1;
         }
       }
+      if (shuffle_blocks)
+        std::shuffle(idx_block_order.begin(), idx_block_order.end(), std::default_random_engine());
     }
 
     virtual void appendBlock(SparseDataBlock<num_t> const * block) {
@@ -105,6 +111,7 @@ namespace obamadb {
         idx.push_back(j);
       }
       idx_order.push_back(idx);
+      idx_block_order.push_back(idx_block_order.size());
     }
 
     void init_idx_shuffle() {
@@ -125,6 +132,7 @@ namespace obamadb {
   protected:
 
     std::vector<std::vector<int>> idx_order;
+    std::vector<int> idx_block_order;
     int repeat;
     int round;
 
