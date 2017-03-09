@@ -6,6 +6,8 @@
 #include "storage/SparseDataBlock.h"
 #include "storage/Utils.h"
 
+#define USE_ATOMIC_ADD 0
+
 namespace obamadb {
 
   namespace ml {
@@ -125,8 +127,11 @@ namespace obamadb {
       int const numElements = delta.num_elements_;
       for (int i = 0; i < numElements; i++) {
         const int idx = iptr[i];
+#ifdef USE_ATOMIC_ADD
         __sync_fetch_and_add(tptr + idx, (vptr[i] * e));
-        //tptr[idx] = tptr[idx] + (vptr[i] * e);
+#else
+        tptr[idx] = tptr[idx] + (vptr[i] * e);
+#endif
       }
     }
   } // namespace ml
@@ -159,15 +164,16 @@ namespace obamadb {
       // 0.209497 s/epoch
       // Both versions converge to a model with the same accuracy.
 
-      /*
+
+      // There's also potential for write conflict here
+      // we do not use an atomic update because there is no such atomic instruction
       float const scalar = step_size * mu;
       // scale only the values which were updated.
       for (int i = row.num_elements_; i-- > 0;) {
         const int idx_j = row.index_[i];
-        float_t const deg = shared_params_->degrees[idx_j];
+        int const deg = shared_params_->degrees[idx_j];
         theta[idx_j] *= 1 - scalar / deg;
       }
-      */
 
     }
 

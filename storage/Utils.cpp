@@ -16,4 +16,29 @@ namespace obamadb {
     return shared_theta;
   }
 
+  std::vector<int> GetIntList(std::string const & list) {
+    std::vector<int> vec;
+    char const * raw = list.c_str();
+    int cur_int = 0;
+    bool negate = false;
+    for (int i = 0; i < list.size(); i++) {
+      if (raw[i] == ',') {
+        vec.push_back(cur_int * (negate ? -1 : 1));
+        cur_int = 0;
+        negate = false;
+      } else {
+        if (raw[i] == '-' && (i == 0 || raw[i-1] == ',')) {
+          negate = true;
+        } else {
+          CHECK_LT(raw[i], 48 + 10) << "invalid int";
+          CHECK_GE(raw[i], 48) << "invalid int";
+          cur_int *= 10;
+          cur_int += raw[i] - 48;
+        }
+      }
+    }
+    vec.push_back(cur_int);
+    return vec;
+  }
+
 }

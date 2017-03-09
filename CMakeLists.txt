@@ -39,11 +39,14 @@ add_subdirectory(storage)
 add_executable(obamadb_main main.cpp)
 target_link_libraries(obamadb_main
         glog
+        gflags
         obamadb_storage_DataBlock
         obamadb_storage_DataView
         obamadb_storage_IO
         obamadb_storage_SparseDataBlock
         obamadb_storage_StorageConstants
         obamadb_storage_ThreadPool
+        obamadb_storage_Matrix
         obamadb_storage_MLTask
+        obamadb_storage_Utils
         obamadb_storage_tests_StorageTestHelpers)
