@@ -8,8 +8,8 @@
 #include "storage/SVMTask.h"
 
 // comment this out depending on the test you are doing:
-// #define USE_HINGE 0
-// #define USE_SCALING 0
+#define USE_HINGE 0
+#define USE_SCALING 0
 
 namespace obamadb {
 
@@ -33,7 +33,7 @@ namespace obamadb {
       if (wxy < 1) {
         num_t const e = step_size * y;
         // scale weights
-        ml::scaleAndAdd(theta, row, e);
+        ml::scale_and_add(theta, row, e);
       }
 #else
       // always apply the hinge loss, for memory-access
@@ -49,6 +49,7 @@ namespace obamadb {
 #endif
 
 #ifdef USE_SCALING
+      // applies l2 regularization
       num_t const scalar = step_size * mu;
       // scale only the values which were updated.
       for (int i = row.numElements(); i-- > 0;) {
@@ -134,7 +135,7 @@ namespace obamadb {
       if (wxy < 1) {
         num_t const e = step_size * y;
         // scale weights
-        ml::scaleAndAdd(theta, row, e);
+        ml::scale_and_add(theta, row, e);
       }
 #else
       // always apply the hinge loss, for memory-access
@@ -155,7 +156,7 @@ namespace obamadb {
       for (int i = row.numElements(); i-- > 0;) {
         const int idx_j = row.index_[i];
         num_t const deg = shared_params_->degrees[idx_j];
-        theta[idx_j] *= 1 - scalar / deg;
+        theta[idx_j].val = theta[idx_j].val * (1 - scalar / deg);
       }
 #endif
     }
