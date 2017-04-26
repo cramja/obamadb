@@ -257,24 +257,33 @@ namespace obamadb {
     return epoch_times;
   }
 
+  void getSvmData(std::unique_ptr<Matrix> &train, std::unique_ptr<Matrix> &test) {
+    VPRINT("Reading input files...\n");
+    if (FLAGS_test_file.size() == 0) {
+      VPRINTF("Loading: %s\n", FLAGS_train_file.c_str());
+      std::unique_ptr<Matrix> source_data;
+      PRINT_TIMING({source_data.reset(IO::load(FLAGS_train_file));});
+      VSTREAM(*source_data);
+      VPRINT("Test file not specified, using an 80-20 train-test split of train file\n");
+      std::pair<Matrix*, Matrix*> split = source_data->split(0.8);
+      train.reset(split.first);
+      test.reset(split.second);
+    } else {
+      VPRINTF("Loading: %s\n", FLAGS_train_file.c_str());
+      PRINT_TIMING({train.reset(IO::load(FLAGS_train_file));});
+      VPRINTF("Loading: %s\n", FLAGS_test_file.c_str());
+      PRINT_TIMING({test.reset(IO::load(FLAGS_test_file));});
+    }
+
+    VSTREAM(*train);
+    VSTREAM(*test);
+  }
+
   void runSvmExperiment() {
     std::unique_ptr<Matrix> mat_train;
     std::unique_ptr<Matrix> mat_test;
+    getSvmData(mat_train, mat_test);
 
-    VPRINT("Reading input files...\n");
-    VPRINTF("Loading: %s\n", FLAGS_train_file.c_str());
-    PRINT_TIMING({mat_train.reset(IO::load(FLAGS_train_file));});
-    VSTREAM(*mat_train);
-
-    if (FLAGS_test_file.size() == 0) {
-      VPRINT("Test file not specified, using a sample of the train file\n");
-      mat_test.reset(mat_train->sample(0.2));
-      VSTREAM(*mat_test);
-    } else {
-      VPRINTF("Loading: %s\n", FLAGS_test_file.c_str());
-      PRINT_TIMING({mat_test.reset(IO::load(FLAGS_test_file));});
-      VSTREAM(*mat_test);
-    }
     CHECK_EQ(mat_test->numColumns_, mat_train->numColumns_)
       << "Train and Test matrices had differing number of features.";
 

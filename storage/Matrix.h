@@ -129,6 +129,59 @@ namespace obamadb {
     }
 
     /**
+     * @brief Splits the data into 2 sets by randomly selecting over each tuple in the source matrix.
+     * @param frac_split Fraction of the first matrix in the pair. The second matrix will contain 1-frac of the
+     * tuples.
+     * @return Two split matrices.
+     */
+    std::pair<Matrix*, Matrix*> split(float frac_split) const {
+      CHECK_LT(frac_split, 1);
+      CHECK_GT(frac_split, 0);
+
+      std::vector<SparseDataBlock<num_t> *> blocks_left,
+                                            blocks_right;
+
+      // Helper function to insert into a storage block.
+      auto insertInto = [](std::vector<SparseDataBlock<num_t>*> &blocks,
+                           svector<num_t> const &src,
+                           SparseDataBlock<num_t> * &dst) {
+        if (!dst->appendRow(src)) {
+          blocks.push_back(dst);
+          dst = new SparseDataBlock<num_t>();
+          CHECK(dst->appendRow(src));
+        }
+      };
+
+      // sample evenly across the blocks.
+      svector<num_t> rand_row(0, nullptr);
+      SparseDataBlock<num_t> * curr_block_left = new SparseDataBlock<num_t>();
+      SparseDataBlock<num_t> * curr_block_right = new SparseDataBlock<num_t>();
+      for(auto & block : this->blocks_) {
+        for (int row = 0; row < block->getNumRows(); row++) {
+          block->getRowVectorFast(row, &rand_row);
+          if (randomFloat() < frac_split) {
+            insertInto(blocks_left, rand_row, curr_block_left);
+          } else {
+            insertInto(blocks_right, rand_row, curr_block_right);
+          }
+        }
+      }
+      if (curr_block_left->getNumRows() > 0) {
+        insertInto(blocks_left, rand_row, curr_block_left);
+      }
+      if (curr_block_right->getNumRows() > 0) {
+        insertInto(blocks_right, rand_row, curr_block_right);
+      }
+
+      // Ensure that the 2 matrices will have the same dimensions
+      std::pair<Matrix*, Matrix*> result = {new Matrix(blocks_left), new Matrix(blocks_right)};
+      int const max_cols = std::max(result.first->numColumns_, result.second->numColumns_);
+      result.first->numColumns_ = max_cols;
+      result.second->numColumns_ = max_cols;
+      return result;
+    }
+
+    /**
      * Appends the row to the last block in the matrix's list of datablocks. If it does not fit, a new data
      * block will be created.
      * @param row Row to append
